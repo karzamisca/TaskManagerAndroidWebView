@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Environment
+import android.os.Message
 import android.webkit.MimeTypeMap
 import android.webkit.CookieManager
 import androidx.appcompat.app.AlertDialog
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         webSettings.javaScriptEnabled = true
         webSettings.domStorageEnabled = true
         webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        webSettings.setSupportMultipleWindows(true) // Allow pop-ups
 
         // WebView client to intercept URL loading
         webView.webViewClient = object : WebViewClient() {
@@ -39,6 +41,59 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
                 return false
+            }
+        }
+
+        // Set up the WebChromeClient to handle pop-ups and alerts
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onCreateWindow(
+                view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
+            ): Boolean {
+                val newWebView = WebView(applicationContext)
+                newWebView.settings.javaScriptEnabled = true
+                newWebView.webViewClient = WebViewClient()
+                val transport = resultMsg?.obj as WebView.WebViewTransport
+                transport.webView = newWebView
+                resultMsg.sendToTarget()
+                return true
+            }
+
+            override fun onJsAlert(
+                view: WebView?, url: String?, message: String?, result: JsResult?
+            ): Boolean {
+                // Handle JS alerts
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setPositiveButton("OK") { _, _ -> result?.confirm() }
+                    .setCancelable(false)
+                    .show()
+                return true
+            }
+
+            override fun onJsConfirm(
+                view: WebView?, url: String?, message: String?, result: JsResult?
+            ): Boolean {
+                // Handle JS confirm
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setPositiveButton("OK") { _, _ -> result?.confirm() }
+                    .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
+                    .setCancelable(false)
+                    .show()
+                return true
+            }
+
+            override fun onJsPrompt(
+                view: WebView?, url: String?, message: String?, defaultValue: String?, result: JsPromptResult?
+            ): Boolean {
+                // Handle JS prompt
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setCancelable(false)
+                    .setPositiveButton("OK") { _, _ -> result?.confirm(defaultValue) }
+                    .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
+                    .show()
+                return true
             }
         }
 

@@ -14,6 +14,7 @@ import android.os.Environment
 import android.webkit.MimeTypeMap
 import android.webkit.CookieManager
 import androidx.appcompat.app.AlertDialog
+import java.net.URLDecoder
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,29 +44,36 @@ class MainActivity : AppCompatActivity() {
 
         // Set up the WebView to listen for file downloads
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
-            val downloadUri = Uri.parse(url)
-            download(downloadUri, userAgent, mimeType)
+            val fileName = extractFileName(contentDisposition, url)
+            download(Uri.parse(url), userAgent, mimeType, fileName)
         }
 
         // Load the initial URL
         webView.loadUrl("https://kylongtask.azurewebsites.net/login")
     }
 
-    private fun download(downloadUri: Uri, userAgent: String, mimeType: String?) {
-        // Get the file name from the URL
-        val path = downloadUri.path?.split("/")?.toTypedArray()
-        var fileName = path?.lastOrNull() ?: "downloaded_file"
-
-        // Check if a file extension is provided, otherwise, use the MIME type to determine the extension
-        if (!fileName.contains(".")) {
-            mimeType?.let {
-                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-                if (extension != null) {
-                    fileName += ".$extension"
+    private fun extractFileName(contentDisposition: String?, url: String): String {
+        return try {
+            if (!contentDisposition.isNullOrEmpty() && contentDisposition.contains("filename")) {
+                val fileNamePart = contentDisposition.split("filename*=")
+                if (fileNamePart.size > 1) {
+                    // Extract and decode the UTF-8 encoded filename
+                    URLDecoder.decode(fileNamePart[1].substringAfter("''"), "UTF-8")
+                } else {
+                    // Fallback to the regular "filename" attribute
+                    contentDisposition.split("filename=")[1].trim('"')
                 }
+            } else {
+                // If Content-Disposition header is absent or invalid, use the last segment of the URL
+                Uri.parse(url).lastPathSegment ?: "downloaded_file"
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "downloaded_file"
         }
+    }
 
+    private fun download(downloadUri: Uri, userAgent: String, mimeType: String?, fileName: String) {
         // Get the cookies for the download request
         val cookies = CookieManager.getInstance().getCookie(downloadUri.toString())
 
@@ -93,7 +101,7 @@ class MainActivity : AppCompatActivity() {
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         downloadManager.enqueue(request)
 
-        Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Download started: $fileName", Toast.LENGTH_SHORT).show()
     }
 
     @Deprecated("Deprecated in Java")

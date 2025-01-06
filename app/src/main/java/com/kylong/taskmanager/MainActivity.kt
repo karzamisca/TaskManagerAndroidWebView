@@ -52,16 +52,20 @@ class MainActivity : AppCompatActivity() {
 
         // Handle file uploads and pop-ups
         webView.webChromeClient = object : WebChromeClient() {
+            // Handling creation of a new window (for links with target="_blank")
             override fun onCreateWindow(
                 view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
             ): Boolean {
-                val newWebView = WebView(applicationContext)
-                newWebView.settings.javaScriptEnabled = true
-                newWebView.webViewClient = WebViewClient()
-                val transport = resultMsg?.obj as WebView.WebViewTransport
-                transport.webView = newWebView
-                resultMsg.sendToTarget()
-                return true
+                val result = view?.hitTestResult
+                val data = result?.extra
+                if (data != null) {
+                    // Create an intent to open the link in the browser
+                    val context: Context = view.context
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(data))
+                    context.startActivity(browserIntent)
+                    return true
+                }
+                return false
             }
 
             // Handle file chooser for <input type="file">

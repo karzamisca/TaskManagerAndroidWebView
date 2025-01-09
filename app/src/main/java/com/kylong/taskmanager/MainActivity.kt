@@ -19,7 +19,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.net.URLDecoder
 
-@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
@@ -50,7 +49,6 @@ class MainActivity : AppCompatActivity() {
         webSettings.domStorageEnabled = true
         webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         webSettings.setSupportMultipleWindows(true) // Allow pop-ups
-        webSettings.saveFormData = true // Enable saving form data (like username & password)
 
         // Handle file uploads and pop-ups
         webView.webChromeClient = object : WebChromeClient() {

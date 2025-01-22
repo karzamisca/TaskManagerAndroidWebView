@@ -9,7 +9,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.Message
+import android.util.Base64
 import android.webkit.*
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.activity.result.ActivityResult
@@ -17,6 +19,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URLDecoder
 
 class MainActivity : AppCompatActivity() {
@@ -49,6 +53,9 @@ class MainActivity : AppCompatActivity() {
         webSettings.domStorageEnabled = true
         webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         webSettings.setSupportMultipleWindows(true) // Allow pop-ups
+
+        // Add JavaScript interface to handle Blob URIs
+        webView.addJavascriptInterface(BlobHandler(this), "Android")
 
         // Handle file uploads and pop-ups
         webView.webChromeClient = object : WebChromeClient() {
@@ -104,14 +111,23 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
 
+            // Handle JavaScript prompt() calls
             override fun onJsPrompt(
                 view: WebView?, url: String?, message: String?, defaultValue: String?, result: JsPromptResult?
             ): Boolean {
+                val input = EditText(this@MainActivity)
+                input.setText(defaultValue)
+
                 AlertDialog.Builder(this@MainActivity)
                     .setMessage(message)
+                    .setView(input)
+                    .setPositiveButton("OK") { _, _ ->
+                        result?.confirm(input.text.toString())
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        result?.cancel()
+                    }
                     .setCancelable(false)
-                    .setPositiveButton("OK") { _, _ -> result?.confirm(defaultValue) }
-                    .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
                     .show()
                 return true
             }
@@ -131,8 +147,14 @@ class MainActivity : AppCompatActivity() {
 
         // Handle file downloads
         webView.setDownloadListener { url, userAgent, contentDisposition, _, _ ->
-            val fileName = extractFileName(contentDisposition, url)
-            download(Uri.parse(url), userAgent, fileName)
+            if (url.startsWith("blob:")) {
+                // Handle Blob URL
+                webView.loadUrl("javascript:Android.downloadBlob('$url')")
+            } else {
+                // Handle regular URL
+                val fileName = extractFileName(contentDisposition, url)
+                download(Uri.parse(url), userAgent, fileName)
+            }
         }
 
         // Load the initial URL
@@ -186,5 +208,62 @@ class MainActivity : AppCompatActivity() {
         downloadManager.enqueue(request)
 
         Toast.makeText(this, "Download started: $fileName", Toast.LENGTH_SHORT).show()
+    }
+
+    // JavaScript interface to handle Blob URIs
+    inner class BlobHandler(private val context: Context) {
+        @JavascriptInterface
+        fun downloadBlob(blobUrl: String) {
+            // Run the WebView interaction on the main thread
+            runOnUiThread {
+                // JavaScript code to convert Blob to Base64
+                val js = """
+                    (function() {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('GET', '$blobUrl', true);
+                        xhr.responseType = 'blob';
+                        xhr.onload = function(e) {
+                            if (this.status == 200) {
+                                var blob = this.response;
+                                var reader = new FileReader();
+                                reader.readAsDataURL(blob);
+                                reader.onloadend = function() {
+                                    var base64data = reader.result;
+                                    Android.saveBase64(base64data);
+                                }
+                            }
+                        };
+                        xhr.send();
+                    })();
+                """.trimIndent()
+
+                // Execute JavaScript in the WebView
+                val webView: WebView = findViewById(R.id.webview)
+                webView.evaluateJavascript(js, null)
+            }
+        }
+
+        @JavascriptInterface
+        fun saveBase64(base64Data: String) {
+            try {
+                val base64String = base64Data.substring(base64Data.indexOf(",") + 1)
+                val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
+
+                val fileName = "downloaded_file_${System.currentTimeMillis()}.bin"
+                val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName)
+                FileOutputStream(file).use { fos ->
+                    fos.write(decodedBytes)
+                }
+
+                runOnUiThread {
+                    Toast.makeText(context, "File saved: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(context, "Failed to save file", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }

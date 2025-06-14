@@ -137,7 +137,7 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                if (Uri.parse(url).host != "kylongtask.azurewebsites.net") {
+                if (Uri.parse(url).host != "kylongtask.onrender.com") {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     return true
                 }
@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Load the initial URL
-        webView.loadUrl("https://kylongtask.azurewebsites.net/login")
+        webView.loadUrl("https://kylongtask.onrender.com/login")
 
         // Handle back navigation
         onBackPressedDispatcher.addCallback(this) {

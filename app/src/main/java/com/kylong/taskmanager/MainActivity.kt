@@ -19,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URLDecoder
@@ -68,7 +69,7 @@ class MainActivity : AppCompatActivity() {
                 if (data != null) {
                     // Create an intent to open the link in the browser
                     val context: Context = view.context
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(data))
+                    val browserIntent = Intent(Intent.ACTION_VIEW, data.toUri())
                     context.startActivity(browserIntent)
                     return true
                 }
@@ -137,8 +138,8 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                if (Uri.parse(url).host != "kylongtask.onrender.com") {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                if (url.toUri().host != "kylongtask.onrender.com") {
+                    startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                     return true
                 }
                 return false
@@ -153,7 +154,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 // Handle regular URL
                 val fileName = extractFileName(contentDisposition, url)
-                download(Uri.parse(url), userAgent, fileName)
+                download(url.toUri(), userAgent, fileName)
             }
         }
 
@@ -180,7 +181,7 @@ class MainActivity : AppCompatActivity() {
                     contentDisposition.split("filename=")[1].trim('"')
                 }
             } else {
-                Uri.parse(url).lastPathSegment ?: "downloaded_file"
+                url.toUri().lastPathSegment ?: "downloaded_file"
             }
         } catch (e: Exception) {
             e.printStackTrace()

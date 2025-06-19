@@ -138,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                if (url.toUri().host != "kylongtask.onrender.com") {
+                if (url.toUri().host != "task.kylong.com.vn") {
                     startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                     return true
                 }
@@ -159,7 +159,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Load the initial URL
-        webView.loadUrl("https://kylongtask.onrender.com/login")
+        webView.loadUrl("https://task.kylong.com.vn/login")
 
         // Handle back navigation
         onBackPressedDispatcher.addCallback(this) {
@@ -205,7 +205,7 @@ class MainActivity : AppCompatActivity() {
         request.addRequestHeader("User-Agent", userAgent)
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
-        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
         downloadManager.enqueue(request)
 
         Toast.makeText(this, "Download started: $fileName", Toast.LENGTH_SHORT).show()
